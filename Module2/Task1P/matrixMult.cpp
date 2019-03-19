@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+#include <string>
 #include <chrono>
 
 using namespace std;
@@ -48,6 +50,22 @@ void multiplyMatrices(int a[][10], int b[][10], int c[][10]) {
     }
 }
 
+// Writes the given matrix to file.
+void persistToFile(string path, int m[][10]) {
+    ofstream outfile;
+    outfile.open("result.txt");
+
+    for (int i=0; i<10; i++) {
+        for (int j=0; j<10; j++) {
+            outfile << m[i][j] << " ";
+        }
+
+        outfile << endl;
+    }
+
+    outfile.close();
+}
+
 int main(int argc, char** argv)
 {
     int a[10][10];
@@ -62,6 +80,9 @@ int main(int argc, char** argv)
     multiplyMatrices(a, b, c); 
 
     double t = tmr.elapsed();
+
+    persistToFile("result.txt", c);
+
     cout << "Elapsed time: " << (t * 1000) << endl;
 
     return 0;
