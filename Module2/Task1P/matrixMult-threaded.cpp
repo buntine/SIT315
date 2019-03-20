@@ -2,6 +2,8 @@
 #include <fstream>
 #include <string>
 #include <chrono>
+#include <thread>
+#include <math.h>
 
 using namespace std;
 
@@ -46,10 +48,10 @@ void partiallyMultiplyMatrices(int start, int end, int a[][10], int b[][10], int
     int col;
 
     for (int i=start; i<end; i++) {
-        row = i / 10;
-        col = i % 10;
+        row = floor(i / 10);
+        col = floor(i % 10);
 
-        c[col][row] = multiplyRowCol(a[row], b, col);
+        c[row][col] = multiplyRowCol(a[row], b, col);
     }
 }
 
@@ -73,23 +75,32 @@ int main(int argc, char** argv) {
     int a[10][10];
     int b[10][10];
     int c[10][10];
+
+    int threads = 8;
+
+    thread tt[threads];
       
     populateMatrix(a);
     populateMatrix(b);
 
-    // TODO: remove because not needed.
-    for (int i=0; i<10; i++) {
-        for (int j=0; j<10; j++) {
-            c[i][j] = 0;
-        }
-    }
-
     Timer tmr;
 
-    // TODO: Call this in loop of N. Make new thread and tell
-    // it to compute from bounds: i .. i + chunk_size where
-    // chunk_size = (10 * 10) / num_threads.
-    partiallyMultiplyMatrices(0, 12, a, b, c); 
+    int chunkSize = floor((10 * 10) / threads);
+
+    for (int t=0; t<threads; t++) {
+        int start = t * chunkSize;
+        tt[t] = thread(partiallyMultiplyMatrices, start, start + chunkSize, a, b, c);
+    }
+
+    // Do remaiming work in the main thread.
+    int leftover = (10 * 10) % chunkSize;
+    if (leftover > 0) {
+        partiallyMultiplyMatrices((10 * 10) - leftover, (10 * 10), a, b, c);
+    }
+
+    for (int t=0; t<threads; t++) {
+        tt[t].join();
+    }
 
     double t = tmr.elapsed();
 
