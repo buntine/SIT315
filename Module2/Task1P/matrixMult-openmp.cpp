@@ -2,16 +2,14 @@
 #include <fstream>
 #include <string>
 #include <chrono>
-#include <thread>
-#include <math.h>
 
 #define N 200
-#define THREADS 8
 
 using namespace std;
 
 // Source: https://stackoverflow.com/questions/728068/how-to-calculate-a-time-difference-in-c
-class Timer {
+class Timer
+{
 public:
     Timer() : beg_(clock_::now()) {}
     void reset() { beg_ = clock_::now(); }
@@ -46,15 +44,12 @@ int multiplyRowCol(int a[], int b[][N], int col) {
 }
 
 // Multiplies matrices a and b, storing the result in c.
-void partiallyMultiplyMatrices(int start, int end, int a[][N], int b[][N], int c[][N]) {
-    int row;
-    int col;
-
-    for (int i=start; i<end; i++) {
-        row = floor(i / N);
-        col = floor(i % N);
-
-        c[row][col] = multiplyRowCol(a[row], b, col);
+void multiplyMatrices(int a[][N], int b[][N], int c[][N]) {
+    #pragma omp for schedule(static)
+    for (int row=0; row<N; row++) {
+        for (int col=0; col<N; col++) {
+            c[col][row] = multiplyRowCol(a[row], b, col);
+        }
     }
 }
 
@@ -74,36 +69,18 @@ void persistToFile(string path, int m[][N]) {
     outfile.close();
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     int a[N][N];
     int b[N][N];
     int c[N][N];
-
-    thread tt[THREADS];
-
-    int matrixSize = N * N;
       
     populateMatrix(a);
     populateMatrix(b);
 
     Timer tmr;
 
-    int chunkSize = floor(matrixSize / THREADS);
-
-    for (int t=0; t<THREADS; t++) {
-        int start = t * chunkSize;
-        tt[t] = thread(partiallyMultiplyMatrices, start, start + chunkSize, a, b, c);
-    }
-
-    // Do remaiming work in the main thread.
-    int leftover = (matrixSize) % chunkSize;
-    if (leftover > 0) {
-        partiallyMultiplyMatrices(matrixSize - leftover, matrixSize, a, b, c);
-    }
-
-    for (int t=0; t<THREADS; t++) {
-        tt[t].join();
-    }
+    multiplyMatrices(a, b, c); 
 
     double t = tmr.elapsed();
 
