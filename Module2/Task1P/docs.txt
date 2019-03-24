@@ -1,0 +1,20 @@
+The concurrent approach I took was to decompose the problem of multiplying matrices A and B of size N*N by treating the computation of each resulting cell in matrix C to be a task that can be parallelized.
+
+Each thread computes only a unique portion of the resulting matrix. No thread ever tries to compute the same cell in matrix C so as to prevent race conditions when dealing with mutable state. The main thread will pick up whatever cells are left over while the other threads do their work.
+
+The initial matrix generation and the persistance of the resulting matrix, C, to disk is completed sequentially. The former, although could be executed in parallel, is relatively trivial and thus would see only minor performance improvements to the overall program. The latter is a fundamentally stateful operation that would be difficult to execute concurrently with deterministic results.
+
+Example:
+
+For matrices of size 10 * 10 with 8 threads:
+  - Chunk size = (10 * 10) / 8 = 12
+
+  - Thread 1 computes cells 0 - 12
+  - Thread 2 computes cells 13 - 24
+  - Thread 3 computes cells 14 - 36
+  - Thread 4 computes cells 15 - 48
+  - Thread 5 computes cells 16 - 60
+  - Thread 6 computes cells 17 - 72
+  - Thread 7 computes cells 18 - 84
+  - Thread 8 computes cells 19 - 96
+  - Main thread computes cells 97 - 100
