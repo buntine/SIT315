@@ -2,8 +2,9 @@
 #include <fstream>
 #include <string>
 #include <chrono>
+#include <omp.h>
 
-#define N 200
+#define N 100
 
 using namespace std;
 
@@ -24,7 +25,7 @@ private:
 };
 
 // Populates the given matrix with random numbers.
-void populateMatrix(int a[][N]) {
+void populateMatrix(long a[][N]) {
     for (int i=0; i<N; i++) {
         for (int j=0; j<N; j++) {
             a[i][j] = rand() % 100;
@@ -33,8 +34,8 @@ void populateMatrix(int a[][N]) {
 }
 
 // Multiplies row a with column col from b, returning the result.
-int multiplyRowCol(int a[], int b[][N], int col) {
-    int result = 0;
+long multiplyRowCol(long a[], long b[][N], long col) {
+    long result = 0;
 
     for (int i=0; i<N; i++) {
         result += (a[i] * b[i][col]);
@@ -44,8 +45,8 @@ int multiplyRowCol(int a[], int b[][N], int col) {
 }
 
 // Multiplies matrices a and b, storing the result in c.
-void multiplyMatrices(int a[][N], int b[][N], int c[][N]) {
-    #pragma omp for schedule(static)
+void multiplyMatrices(long a[][N], long b[][N], long c[][N]) {
+    #pragma omp parallel for schedule(static)
     for (int row=0; row<N; row++) {
         for (int col=0; col<N; col++) {
             c[col][row] = multiplyRowCol(a[row], b, col);
@@ -54,7 +55,7 @@ void multiplyMatrices(int a[][N], int b[][N], int c[][N]) {
 }
 
 // Writes the given matrix to file.
-void persistToFile(string path, int m[][N]) {
+void persistToFile(string path, long m[][N]) {
     ofstream outfile;
     outfile.open("result.txt");
 
@@ -71,9 +72,9 @@ void persistToFile(string path, int m[][N]) {
 
 int main(int argc, char** argv)
 {
-    int a[N][N];
-    int b[N][N];
-    int c[N][N];
+    long a[N][N];
+    long b[N][N];
+    long c[N][N];
       
     populateMatrix(a);
     populateMatrix(b);

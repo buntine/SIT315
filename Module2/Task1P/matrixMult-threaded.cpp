@@ -5,7 +5,7 @@
 #include <thread>
 #include <math.h>
 
-#define N 200
+#define N 100
 #define THREADS 8
 
 using namespace std;
@@ -26,7 +26,7 @@ private:
 };
 
 // Populates the given matrix with random numbers.
-void populateMatrix(int a[][N]) {
+void populateMatrix(long a[][N]) {
     for (int i=0; i<N; i++) {
         for (int j=0; j<N; j++) {
             a[i][j] = rand() % 100;
@@ -35,8 +35,8 @@ void populateMatrix(int a[][N]) {
 }
 
 // Multiplies row a with column col from b, returning the result.
-int multiplyRowCol(int a[], int b[][N], int col) {
-    int result = 0;
+long multiplyRowCol(long a[], long b[][N], long col) {
+    long result = 0;
 
     for (int i=0; i<N; i++) {
         result += (a[i] * b[i][col]);
@@ -45,8 +45,8 @@ int multiplyRowCol(int a[], int b[][N], int col) {
     return result;
 }
 
-// Multiplies matrices a and b, storing the result in c.
-void partiallyMultiplyMatrices(int start, int end, int a[][N], int b[][N], int c[][N]) {
+// Partially multiplies matrices a nd b from offsets start to stop, storing the result in c.
+void partiallyMultiplyMatrices(int start, int end, long a[][N], long b[][N], long c[][N]) {
     int row;
     int col;
 
@@ -59,7 +59,7 @@ void partiallyMultiplyMatrices(int start, int end, int a[][N], int b[][N], int c
 }
 
 // Writes the given matrix to file.
-void persistToFile(string path, int m[][N]) {
+void persistToFile(string path, long m[][N]) {
     ofstream outfile;
     outfile.open("result.txt");
 
@@ -75,9 +75,9 @@ void persistToFile(string path, int m[][N]) {
 }
 
 int main(int argc, char** argv) {
-    int a[N][N];
-    int b[N][N];
-    int c[N][N];
+    long a[N][N];
+    long b[N][N];
+    long c[N][N];
 
     thread tt[THREADS];
 
