@@ -1,0 +1,19 @@
+The quicksort algorithm has a few key steps:
+
+  - From the sub-array of indices between some start, s, and some end, e
+  - Pick a pivot element (I am just using the last item in the sub-array)
+  - Partition all other elements around the pivot element
+  - Recurse on both sides.
+
+The most effective part of the algorithm to parallelize is the recursive step. In this way, the mutative partition is performed serially and the recursive steps are performed concurrently. This is safe because each recursive call is dealing with a unique portion of the sub-array.
+
+At first I decided to spin up a thread for all recursive calls. This worked for small arrays (< 500), but running it on larger arrays caused the system thread pool to be blown and the program halted execution. I also found that in some cases the speed up was not particularly good because of the sheer depth of the recursive calls meant that overhead of the thread setup was not efficient.
+
+I eventually decided to only perform recursive operations while the sub-arrays were of a sufficiently large size to warrant the setup overhead. I tinkered with the exact number until I found one that should not blow system thread limits and also provide constant speed-up factors.
+
+With this technique I see, on average, a 300% performance improvement on my concurrent algorithm when sorting 1,000,000 signed integers.
+
+On my 8th gen i7 CPU, after 50 executions of each algorith, I saw an average execution time of:
+
+Sequential: ~320ms
+Concurrent: ~105ms

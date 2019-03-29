@@ -1,4 +1,3 @@
-#include <iostream>
 #include <thread>
 
 #define N 1000000
@@ -58,18 +57,7 @@ int main(int argc, char** argv) {
     int list[N];
     
     populateArray(list);
-
-/*    for (int i=0; i<N; i++) {
-        cout << list[i] << ", ";
-    }
-    cout << endl;*/
-
     quicksort(list, 0, N - 1);
-
-    /*for (int i=0; i<N; i++) {
-        cout << list[i] << ", ";
-    }
-    cout << endl;*/
 
     return 0;
 }
