@@ -1,6 +1,8 @@
 #include <iostream>
+#include <thread>
 
 #define N 1000000
+#define SUBARRAY_DIVISOR 10
 
 using namespace std;
 
@@ -37,8 +39,18 @@ void quicksort(int list[N], int low, int high) {
     if (low < high) {
         int pi = partition(list, low, high);
 
-        quicksort(list, low, pi - 1);
-        quicksort(list, pi + 1, high);
+        // Only create a threads for large enough sub-arrays. Otherwise, do
+        // the work sequentially.
+        if ((high - low) > (N / SUBARRAY_DIVISOR)) {
+            thread t1 = thread(quicksort, list, low, pi - 1);
+            thread t2 = thread(quicksort, list, pi + 1, high);
+
+            t1.join();
+            t2.join();
+        } else {
+            quicksort(list, low, pi - 1);
+            quicksort(list, pi + 1, high);
+        }
     }
 }
 
@@ -50,7 +62,7 @@ int main(int argc, char** argv) {
 /*    for (int i=0; i<N; i++) {
         cout << list[i] << ", ";
     }
-    cout << endl; */
+    cout << endl;*/
 
     quicksort(list, 0, N - 1);
 
