@@ -45,16 +45,19 @@ long multiplyRowCol(long a[], long b[][N], long col) {
 }
 
 // Partially multiplies matrices a nd b from offsets start to stop, storing the result in c.
-void partiallyMultiplyMatrices(int start, int end, long a[][N], long b[][N], long c[][N]) {
+void partiallyMultiplyMatrices(int start, int end, long a[][N], long b[][N]) {
     int row;
     int col;
+    int results[end - start];
 
     for (int i=start; i<end; i++) {
         row = floor(i / N);
         col = floor(i % N);
 
-        c[row][col] = multiplyRowCol(a[row], b, col);
+        results[i - start] = multiplyRowCol(a[row], b, col);
     }
+
+    MPI_Send(results, end - start, MPI_INT, 0, 0, MPI_COMM_WORLD);
 }
 
 // Writes the given matrix to file.
@@ -82,13 +85,6 @@ int main(int argc, char** argv) {
     populateMatrix(a);
     populateMatrix(b);
 
-    // TODO: Remove when working.
-    for (int i = 0; i<N; i++) {
-        for (int j = 0; j<N; j++) {
-            c[i][j] = 0;
-        }
-    }
-
     MPI_Init(&argc, &argv);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -96,7 +92,7 @@ int main(int argc, char** argv) {
 
     Timer tmr;
 
-    int chunkSize = floor(matrixSize / size);
+    int chunkSize = floor(matrixSize / (size - 1));
 
     // TODO: How to share memory? Or should non-0 hosts send message with results back to 0 in order to be persisted?
     // IDEA:
@@ -104,26 +100,36 @@ int main(int argc, char** argv) {
     //   - Main process keeps reading messages until all hosts are closed (?) or matrix is full
     if (rank > 0) {
         int start = (rank - 1) * chunkSize;
-        partiallyMultiplyMatrices(start, start + chunkSize, a, b, c);
-    }
+        partiallyMultiplyMatrices(start, start + chunkSize, a, b);
+    } else {
+        // TODO: Remove when working.
+        //for (int i = 0; i<N; i++) {
+        //    for (int j = 0; j<N; j++) {
+        //        c[i][j] = 0;
+        //    }
+       // }
 
-    // Do remaiming work in the zeroth process / host.
-    if (rank == 0) {
-        int leftover = (matrixSize) % chunkSize;
-        if (leftover > 0) {
-            partiallyMultiplyMatrices(matrixSize - leftover, matrixSize, a, b, c);
+        MPI_Status status;
+        int count;
+        int results[chunkSize];
+
+        for (int i=1; i<size; i++) {
+            MPI_Recv(results, chunkSize, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+
+            MPI_Get_count(&status, MPI_INT, &count);
+            cout << "Got" << count << " meesages from " << i << endl;
+
+            for (int i=0; i<count; i++) {
+                cout << results[i] << ", ";
+            }
+            cout << endl;
         }
 
-        // TODO: Wait for all other processes to send message saying they are done?
-        /*for (int t=0; t<THREADS; t++) {
-            tt[t].join();
-        }*/
+    //    double t = tmr.elapsed();
 
-        double t = tmr.elapsed();
-
-        persistToFile("result.txt", c);
-
-        cout << "Elapsed time: " << (t * 1000) << endl;
+        //persistToFile("result.txt", c);
+//
+ //       cout << "Elapsed time: " << (t * 1000) << endl;
     }
 
     MPI_Finalize();
