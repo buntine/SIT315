@@ -5,7 +5,7 @@
 #include <mpi.h>
 #include <math.h>
 
-#define N 10
+#define N 500
 
 using namespace std;
 
@@ -51,8 +51,6 @@ void partiallyMultiplyMatrices(int start, int end, long a[][N], long b[][N]) {
     int col;
     int results[end - start];
 
-    cout << start << ", " << end << endl;
-
     for (int i=start; i<end; i++) {
         row = floor(i / N);
         col = floor(i % N);
@@ -80,7 +78,7 @@ void persistToFile(string path, long m[][N]) {
 }
 
 int main(int argc, char** argv) {
-    int rank, size;
+    int rank, size, start, end;
     long a[N][N], b[N][N], c[N][N];
 
     int matrixSize = N * N;
@@ -97,30 +95,33 @@ int main(int argc, char** argv) {
 
     int chunkSize = floor(matrixSize / (size - 1));
 
+    // Slave processes partially compute the matrix and send results to the master.
     if (rank > 0) {
-        int start = (rank - 1) * chunkSize;
-        int end = (rank == size - 1) ?
+        start = (rank - 1) * chunkSize;
+        end = (rank == size - 1) ?
           matrixSize :
           start + chunkSize;
 
         partiallyMultiplyMatrices(start, end, a, b);
-    } else {
-        // TODO: Remove when working.
-        for (int i = 0; i<N; i++) {
-            for (int j = 0; j<N; j++) {
-                c[i][j] = 0;
-            }
-        }
 
+    // Master process waits for results from slaves and mutates result matrix.
+    } else {
         MPI_Status status;
-        int count;
+        int start, count, row, col;
         int results[chunkSize + 1];
 
-        for (int i=1; i<size; i++) {
-            MPI_Recv(results, chunkSize + 1, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
-
+        for (int rank=1; rank<size; rank++) {
+            MPI_Recv(results, chunkSize + 1, MPI_INT, rank, 0, MPI_COMM_WORLD, &status);
             MPI_Get_count(&status, MPI_INT, &count);
-            cout << "Got" << count << " meesages from " << i << endl;
+
+            start = (rank - 1) * chunkSize;
+
+            for (int i=start; i<(start + count); i++) {
+                row = floor(i / N);
+                col = floor(i % N);
+
+                c[row][col] = results[i - start];
+            }
         }
 
         double t = tmr.elapsed();
