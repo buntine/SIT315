@@ -64,7 +64,7 @@ void partiallyMultiplyMatrices(int start, int end, long a[][N], long b[][N]) {
 // Writes the given matrix to file.
 void persistToFile(string path, long m[][N]) {
     ofstream outfile;
-    outfile.open("result.txt");
+    outfile.open(path);
 
     for (int i=0; i<N; i++) {
         for (int j=0; j<N; j++) {
