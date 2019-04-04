@@ -44,11 +44,14 @@ long multiplyRowCol(long a[], long b[][N], long col) {
     return result;
 }
 
-// Partially multiplies matrices a nd b from offsets start to stop, storing the result in c.
+// Partially multiplies matrices a and b from offsets start to stop. Results are
+// sent to the zeroth process.
 void partiallyMultiplyMatrices(int start, int end, long a[][N], long b[][N]) {
     int row;
     int col;
     int results[end - start];
+
+    cout << start << ", " << end << endl;
 
     for (int i=start; i<end; i++) {
         row = floor(i / N);
@@ -94,42 +97,37 @@ int main(int argc, char** argv) {
 
     int chunkSize = floor(matrixSize / (size - 1));
 
-    // TODO: How to share memory? Or should non-0 hosts send message with results back to 0 in order to be persisted?
-    // IDEA:
-    //   - Main process waits for messages from other ranked hosts saying "I computed slot NxM and it is: Z"
-    //   - Main process keeps reading messages until all hosts are closed (?) or matrix is full
     if (rank > 0) {
         int start = (rank - 1) * chunkSize;
-        partiallyMultiplyMatrices(start, start + chunkSize, a, b);
+        int end = (rank == size - 1) ?
+          matrixSize :
+          start + chunkSize;
+
+        partiallyMultiplyMatrices(start, end, a, b);
     } else {
         // TODO: Remove when working.
-        //for (int i = 0; i<N; i++) {
-        //    for (int j = 0; j<N; j++) {
-        //        c[i][j] = 0;
-        //    }
-       // }
+        for (int i = 0; i<N; i++) {
+            for (int j = 0; j<N; j++) {
+                c[i][j] = 0;
+            }
+        }
 
         MPI_Status status;
         int count;
-        int results[chunkSize];
+        int results[chunkSize + 1];
 
         for (int i=1; i<size; i++) {
-            MPI_Recv(results, chunkSize, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(results, chunkSize + 1, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
 
             MPI_Get_count(&status, MPI_INT, &count);
             cout << "Got" << count << " meesages from " << i << endl;
-
-            for (int i=0; i<count; i++) {
-                cout << results[i] << ", ";
-            }
-            cout << endl;
         }
 
-    //    double t = tmr.elapsed();
+        double t = tmr.elapsed();
 
-        //persistToFile("result.txt", c);
-//
- //       cout << "Elapsed time: " << (t * 1000) << endl;
+        persistToFile("result.txt", c);
+
+        cout << "Elapsed time: " << (t * 1000) << endl;
     }
 
     MPI_Finalize();
