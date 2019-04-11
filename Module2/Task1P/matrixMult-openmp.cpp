@@ -4,7 +4,7 @@
 #include <chrono>
 #include <omp.h>
 
-#define N 100
+#define N 500
 
 using namespace std;
 

@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
 
     int chunkSize = floor(matrixSize / (size - 1));
 
-    // Slave processes partially compute the matrix and send results to the master.
+    // Slave processes compute their own portion of the matrix and send results to the master.
     if (rank > 0) {
         start = (rank - 1) * chunkSize;
         end = (rank == size - 1) ?
