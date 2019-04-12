@@ -3,7 +3,7 @@
 #include <string>
 #include <chrono>
 
-#define N 500
+#define N 250
 
 using namespace std;
 

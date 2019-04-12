@@ -18,3 +18,28 @@ For matrices of size 10 * 10 with 8 threads:
   - Thread 7 computes cells 18 - 84
   - Thread 8 computes cells 19 - 96
   - Main thread computes cells 97 - 100
+
+Table of execution times:
+
+Program        Matrix Size    Threadss          Execution Time
+Sequential     100x100        1                 11.134
+Threaded       100x100        8                 3.408
+OpemMP         100x100        8                 3.284
+Sequential     250x250        1                 146.145
+Threaded       250x250        8                 56.087
+OpemMP         250x250        8                 95.690
+Sequential     500x500        1                 560.121
+Threaded       500x500        8                 291.213
+OpemMP         500x500        8                 306.039
+Threaded       500x500        2                 335.190
+Threaded       500x500        4                 297.232
+Threaded       500x500        6                 328.437
+Threaded       500x500        10                303.881
+Threaded       500x500        20                297.463
+Threaded       500x500        100               289.126
+OpenMP         500x500        2                 323.657
+OpenMP         500x500        4                 294.313
+OpenMP         500x500        6                 304.864
+OpenMP         500x500        10                295.219
+OpenMP         500x500        20                290.238
+OpenMP         500x500        100               288.514

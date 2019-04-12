@@ -5,7 +5,7 @@
 #include <thread>
 #include <math.h>
 
-#define N 100
+#define N 250
 #define THREADS 8
 
 using namespace std;
