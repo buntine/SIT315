@@ -17,3 +17,23 @@ On my 8th gen i7 CPU, after 50 executions of each algorith, I saw an average exe
 
 Sequential: ~320ms
 Concurrent: ~105ms
+
+UPDATE:
+
+N = 2,000,000
+Sequential: ~476ms
+Concurrent: ~165ms
+
+N = 5,000,000
+Sequential: ~1,430ms
+Concurrent: ~450ms
+
+(I swapped to heap allocation from here onwards to prevent a seg fault)
+
+N = 10,000,000
+Sequential: ~4,100ms
+Concurrent: ~1,168ms
+
+N = 20,000,000
+Sequential: ~13,178ms
+Concurrent: ~3,821ms

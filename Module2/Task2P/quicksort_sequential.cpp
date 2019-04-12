@@ -1,3 +1,5 @@
+#include <cstdlib>
+
 #define N 1000000
 
 using namespace std;
@@ -41,10 +43,12 @@ void quicksort(int list[N], int low, int high) {
 }
 
 int main(int argc, char** argv) {
-    int list[N];
+    int* list = new int[N];
     
     populateArray(list);
     quicksort(list, 0, N - 1);
+
+    delete[] list;
 
     return 0;
 }
