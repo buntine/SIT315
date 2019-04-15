@@ -39,6 +39,7 @@ void populateMatrix(long a[N*N]) {
 }
 
 // Multiplies row a with column col from b, returning the result.
+// TODO: Merge into openCL code and then remove this function
 long multiplyRowCol(long a[N*N], long b[N*N], long row, long col) {
     long result = 0;
 
@@ -79,10 +80,16 @@ void partiallyMultiplyMatrices(int start, int end, long a[N*N], long b[N*N]) {
         "       end = End[0];"
         ""
         "       ratio = ((end - start) / Nthreads);"  // number of elements for each thread
-        "       from = ratio * ID;"
-        "       stop = ratio * (ID + 1);"
         ""
-        "       for (int i=from; i<stop; i++)"
+        "       from = ratio * ID;"
+        ""
+        "       if (ID == Nthreads) {"
+        "           stop = ratio * (ID + 1);"
+        "       } else {"
+        "           stop = (end - start) - 1;"
+        "       }"
+        ""
+        "       for (int i=from; i<=stop; i++)"
         "           Results[i] = start;"
         "   }";
 
@@ -100,7 +107,7 @@ void partiallyMultiplyMatrices(int start, int end, long a[N*N], long b[N*N]) {
     // create buffers on device (allocate space on GPU)
     cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, sizeof(int) * N * N); // TODO: Only needs to be sized (end - start)
     cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, sizeof(int) * N * N); // TODO: Only needs to be sized (end - start)
-    cl::Buffer buffer_results(context, CL_MEM_READ_WRITE, sizeof(int) * N * N); // TODO: Only needs to be sized (end - start)
+    cl::Buffer buffer_results(context, CL_MEM_READ_WRITE, sizeof(int) * (end - start));
     cl::Buffer buffer_start(context, CL_MEM_READ_ONLY,  sizeof(int));
     cl::Buffer buffer_end(context, CL_MEM_READ_ONLY,  sizeof(int));
 
@@ -109,7 +116,7 @@ void partiallyMultiplyMatrices(int start, int end, long a[N*N], long b[N*N]) {
 
     // push write commands to queue
     queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int) * N * N, a); // TODO: Only write elements in range (start..end)
-    queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, sizeof(int) * N * N, b); // TODO: Only write elements in range (start..end)
+    queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, sizeof(int) * N, b); // TODO: Only write elements in range (start..end)
     queue.enqueueWriteBuffer(buffer_start, CL_TRUE, 0, sizeof(int), aStart);
     queue.enqueueWriteBuffer(buffer_end, CL_TRUE, 0, sizeof(int), aEnd);
 
@@ -121,9 +128,9 @@ void partiallyMultiplyMatrices(int start, int end, long a[N*N], long b[N*N]) {
     matrix_multiply.setArg(4, buffer_end);
     queue.enqueueNDRangeKernel(matrix_multiply, cl::NullRange, cl::NDRange(10), cl::NullRange);
 
-    int results[N * N]; // TODO: Only needs to be sized (end - start)
+    int results[end - start]; // TODO: Only needs to be sized (end - start)
     // read result from GPU to here
-    queue.enqueueReadBuffer(buffer_results, CL_TRUE, 0, sizeof(int) * N * N, results); // TODO: Only needs to be sized (end - start)
+    queue.enqueueReadBuffer(buffer_results, CL_TRUE, 0, sizeof(int) * (end - start), results);
 
     MPI_Send(results, end - start, MPI_INT, 0, 0, MPI_COMM_WORLD);
 }
@@ -152,6 +159,10 @@ int main(int argc, char** argv) {
       
     populateMatrix(a);
     populateMatrix(b);
+
+    for (int i=0; i<N*N; i++) {
+        c[i] = -99;
+    }
 
     MPI_Init(&argc, &argv);
 
