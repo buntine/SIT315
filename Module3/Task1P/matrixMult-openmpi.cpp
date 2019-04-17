@@ -5,7 +5,7 @@
 #include <mpi.h>
 #include <math.h>
 
-#define N 500
+#define N 100
 
 using namespace std;
 

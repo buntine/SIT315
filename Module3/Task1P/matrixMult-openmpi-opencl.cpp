@@ -1,12 +1,13 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <chrono>
 #include <math.h>
 #include <mpi.h>
 #include <CL/cl.hpp>
 
-#define N 10
+#define N 100
 
 using namespace std;
 
@@ -15,8 +16,11 @@ using namespace std;
 
 // NOTE: I've changed my matrices to be represented as a one-dimensional array in row-major format
 //       in this solution because it seems OpenCL does not allow 2D arrays as arguments.
+//       I consulted several online resources in order to wrap my head around OpenCL, including:
+//         - https://github.com/Dakkers/OpenCL-examples
+//         - https://stackoverflow.com/questions/35442327/2d-array-as-opencl-kernel-argument
+//         - https://en.wikipedia.org/wiki/OpenCL
 
-// Source: https://stackoverflow.com/questions/728068/how-to-calculate-a-time-difference-in-c
 class Timer {
 public:
     Timer() : beg_(clock_::now()) {}
@@ -34,97 +38,81 @@ private:
 // Populates the given matrix with random numbers.
 void populateMatrix(int a[N*N]) {
     for (int i=0; i<N*N; i++) {
-        a[i] = 10; //rand() % 100; // TODO: Undo hardcore
+        a[i] = rand() % 100;
     }
-}
-
-// Multiplies row a with column col from b, returning the result.
-// TODO: Merge into openCL code and then remove this function
-int multiplyRowCol(int a[N*N], int b[N*N], int row, int col) {
-    int result = 0;
-
-    for (int i=0; i<N; i++) {
-        result += (a[(row * N) + i] * b[(i * N) + col]);
-    }
-
-    return result;
 }
 
 // Partially multiplies matrices a and b from offsets start to stop. Results are
 // sent to the zeroth process.
 void partiallyMultiplyMatrices(int start, int end, int a[N*N], int b[N*N]) {
-    // get all platforms (drivers), e.g. NVIDIA
     vector<cl::Platform> all_platforms;
 
     cl::Platform::get(&all_platforms);
     cl::Platform default_platform = all_platforms[0];
  
-    // get default device (CPUs, GPUs) of the default platform
     vector<cl::Device> all_devices;
     default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
 
-    cl::Device default_device = all_devices[1];
+    cl::Device default_device = all_devices[1]; // GPU
  
     cl::Context context({default_device});
-
     cl::Program::Sources sources;
 
-    string kernel_code=
-        "   void kernel matrix_multiply(global const int* A, global const int* B, global int* Results, "
-        "                               global const int* Start, global const int* End) {"
-        "       int ID, Nthreads, start, end, ratio, from, stop;"
+    stringstream kernel_code;
+    kernel_code <<
+        "void kernel matrix_multiply(global const int* A, global const int* B, global int* Results, "
+        "                            global const int* Start, global const int* End) {"
+        "    int rowSize, ID, threads, start, end, "
+        "        ratio, from, stop, row, col;"
         ""
-        "       ID = get_global_id(0);"
-        "       Nthreads = get_global_size(0);"
-        "       start = Start[0];"
-        "       end = End[0];"
+        "    rowSize = " << N << ";"
+        "    ID = get_global_id(0);"
+        "    threads = get_global_size(0);"
+        "    start = Start[0];"
+        "    end = End[0];"
+        "    ratio = ((end - start) / threads);"  // number of elements for each thread
+        "    from = (ratio * ID);"
+        "    stop = (ID == threads - 1) ?" // Last thread picks up remaining work
+        "      (end - start) - 1 :"
+        "      from + ratio;"
         ""
-        "       ratio = ((end - start) / Nthreads);"  // number of elements for each thread
+        "    for (int i=from; i<=stop; i++) {"
+        "        row = (start + i) / rowSize;"
+        "        col = (start + i) % rowSize;"
+        "        Results[i] = 0;"
         ""
-        "       from = (ratio * ID);"
-        ""
-        "       if (ID == Nthreads) {"
-        "           stop = from + ratio;"
-        "       } else {"
-        "           stop = (end - start) - 1;"
-        "       }"
-        ""
-        "       for (int i=from; i<=stop; i++) {"
-        "           Results[i] = 0;"
-        ""
-        "           for (int j=0; j<10; j++) {" // TODO: Don't hardcode 10 here.
-        "               Results[i] += (A[(((start + i) / 10) * 10) + j] * B[(j * 10) + ((start + i) % 10)]);"
-        "           }"
-        "       }"
-        "   }";
+        "        for (int j=0; j<rowSize; j++) {"
+        "            Results[i] += A[(row * rowSize) + j] * B[(j * rowSize) + col];"
+        "        }"
+        "    }"
+        "}";
+    string kernel = kernel_code.str();
 
-    sources.push_back({kernel_code.c_str(), kernel_code.length()});
+    sources.push_back({kernel.c_str(), kernel.length()});
 
     cl::Program program(context, sources);
     if (program.build({default_device}) != CL_SUCCESS) {
-        cout << "Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(default_device) << endl;
+        cout << "Error: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(default_device) << endl;
         exit(1);
     }
 
     int aStart[1] = { start };
     int aEnd[1] = { end };
 
-    // create buffers on device (allocate space on GPU)
     cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, sizeof(int) * N * N); // TODO: Only needs to be sized (end - start)
     cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, sizeof(int) * N * N); // TODO: Only needs to be sized (end - start)
     cl::Buffer buffer_results(context, CL_MEM_READ_WRITE, sizeof(int) * (end - start));
     cl::Buffer buffer_start(context, CL_MEM_READ_ONLY,  sizeof(int));
     cl::Buffer buffer_end(context, CL_MEM_READ_ONLY,  sizeof(int));
 
-    // create a queue (a queue of commands that the GPU will execute)
     cl::CommandQueue queue(context, default_device);
 
-    // push write commands to queue
     queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int) * N * N, a); // TODO: Only write elements in range (start..end)
     queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, sizeof(int) * N * N, b); // TODO: Only write elements in range (start..end)
     queue.enqueueWriteBuffer(buffer_start, CL_TRUE, 0, sizeof(int), aStart);
     queue.enqueueWriteBuffer(buffer_end, CL_TRUE, 0, sizeof(int), aEnd);
 
+    // Execute kernel code in GPU
     cl::Kernel matrix_multiply(program, "matrix_multiply");
     matrix_multiply.setArg(0, buffer_A);
     matrix_multiply.setArg(1, buffer_B);
@@ -133,10 +121,11 @@ void partiallyMultiplyMatrices(int start, int end, int a[N*N], int b[N*N]) {
     matrix_multiply.setArg(4, buffer_end);
     queue.enqueueNDRangeKernel(matrix_multiply, cl::NullRange, cl::NDRange(10), cl::NullRange);
 
+    // Read results from GPU
     int results[end - start]; // TODO: Only needs to be sized (end - start)
-    // read result from GPU to here
     queue.enqueueReadBuffer(buffer_results, CL_TRUE, 0, sizeof(int) * (end - start), results);
 
+    // Send results back to master process
     MPI_Send(results, end - start, MPI_INT, 0, 0, MPI_COMM_WORLD);
 }
 
@@ -158,7 +147,9 @@ void persistToFile(string path, int m[N*N]) {
 
 int main(int argc, char** argv) {
     int rank, size, start, end;
-    int a[N*N], b[N*N], c[N*N];
+    int* a = new int[N*N];
+    int* b = new int[N*N];
+    int* c = new int[N*N];
 
     int matrixSize = N * N;
 
@@ -206,6 +197,10 @@ int main(int argc, char** argv) {
 
         cout << "Elapsed time: " << (t * 1000) << endl;
     }
+
+    delete [] a;
+    delete [] b;
+    delete [] c;
 
     MPI_Finalize();
 
