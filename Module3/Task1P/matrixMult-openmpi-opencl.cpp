@@ -32,16 +32,16 @@ private:
 };
 
 // Populates the given matrix with random numbers.
-void populateMatrix(long a[N*N]) {
+void populateMatrix(int a[N*N]) {
     for (int i=0; i<N*N; i++) {
-        a[i] = rand() % 100;
+        a[i] = 10; //rand() % 100; // TODO: Undo hardcore
     }
 }
 
 // Multiplies row a with column col from b, returning the result.
 // TODO: Merge into openCL code and then remove this function
-long multiplyRowCol(long a[N*N], long b[N*N], long row, long col) {
-    long result = 0;
+int multiplyRowCol(int a[N*N], int b[N*N], int row, int col) {
+    int result = 0;
 
     for (int i=0; i<N; i++) {
         result += (a[(row * N) + i] * b[(i * N) + col]);
@@ -52,7 +52,7 @@ long multiplyRowCol(long a[N*N], long b[N*N], long row, long col) {
 
 // Partially multiplies matrices a and b from offsets start to stop. Results are
 // sent to the zeroth process.
-void partiallyMultiplyMatrices(int start, int end, long a[N*N], long b[N*N]) {
+void partiallyMultiplyMatrices(int start, int end, int a[N*N], int b[N*N]) {
     // get all platforms (drivers), e.g. NVIDIA
     vector<cl::Platform> all_platforms;
 
@@ -81,23 +81,28 @@ void partiallyMultiplyMatrices(int start, int end, long a[N*N], long b[N*N]) {
         ""
         "       ratio = ((end - start) / Nthreads);"  // number of elements for each thread
         ""
-        "       from = ratio * ID;"
+        "       from = (ratio * ID);"
         ""
         "       if (ID == Nthreads) {"
-        "           stop = ratio * (ID + 1);"
+        "           stop = from + ratio;"
         "       } else {"
         "           stop = (end - start) - 1;"
         "       }"
         ""
-        "       for (int i=from; i<=stop; i++)"
-        "           Results[i] = start;"
+        "       for (int i=from; i<=stop; i++) {"
+        "           Results[i] = 0;"
+        ""
+        "           for (int j=0; j<10; j++) {" // TODO: Don't hardcode 10 here.
+        "               Results[i] += (A[(((start + i) / 10) * 10) + j] * B[(j * 10) + ((start + i) % 10)]);"
+        "           }"
+        "       }"
         "   }";
 
     sources.push_back({kernel_code.c_str(), kernel_code.length()});
 
     cl::Program program(context, sources);
     if (program.build({default_device}) != CL_SUCCESS) {
-        std::cout << "Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(default_device) << std::endl;
+        cout << "Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(default_device) << endl;
         exit(1);
     }
 
@@ -116,7 +121,7 @@ void partiallyMultiplyMatrices(int start, int end, long a[N*N], long b[N*N]) {
 
     // push write commands to queue
     queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int) * N * N, a); // TODO: Only write elements in range (start..end)
-    queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, sizeof(int) * N, b); // TODO: Only write elements in range (start..end)
+    queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, sizeof(int) * N * N, b); // TODO: Only write elements in range (start..end)
     queue.enqueueWriteBuffer(buffer_start, CL_TRUE, 0, sizeof(int), aStart);
     queue.enqueueWriteBuffer(buffer_end, CL_TRUE, 0, sizeof(int), aEnd);
 
@@ -136,7 +141,7 @@ void partiallyMultiplyMatrices(int start, int end, long a[N*N], long b[N*N]) {
 }
 
 // Writes the given matrix to file.
-void persistToFile(string path, long m[N*N]) {
+void persistToFile(string path, int m[N*N]) {
     ofstream outfile;
     outfile.open(path);
 
@@ -153,16 +158,12 @@ void persistToFile(string path, long m[N*N]) {
 
 int main(int argc, char** argv) {
     int rank, size, start, end;
-    long a[N*N], b[N*N], c[N*N];
+    int a[N*N], b[N*N], c[N*N];
 
     int matrixSize = N * N;
-      
+
     populateMatrix(a);
     populateMatrix(b);
-
-    for (int i=0; i<N*N; i++) {
-        c[i] = -99;
-    }
 
     MPI_Init(&argc, &argv);
 

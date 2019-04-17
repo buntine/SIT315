@@ -47,8 +47,7 @@ long multiplyRowCol(long a[], long b[][N], long col) {
 // Partially multiplies matrices a and b from offsets start to stop. Results are
 // sent to the zeroth process.
 void partiallyMultiplyMatrices(int start, int end, long a[][N], long b[][N]) {
-    int row;
-    int col;
+    int row, col;
     int results[end - start];
 
     for (int i=start; i<end; i++) {
