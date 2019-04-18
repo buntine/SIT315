@@ -1,3 +1,5 @@
+I developed and executed these programs using Manjaro linux and the GNU C++ (g++) compiler
+
 0) OpenMPI:
 
   COMPILE: mpic++ -std=c++0x matrixMult-openmpi.cpp -o mm-mpi.out

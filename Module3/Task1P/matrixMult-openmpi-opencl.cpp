@@ -7,7 +7,7 @@
 #include <mpi.h>
 #include <CL/cl.hpp>
 
-#define N 1000
+#define N 100
 
 using namespace std;
 
@@ -94,16 +94,17 @@ void partiallyMultiplyMatrices(int start, int end, int a[N*N], int b[N*N]) {
     int aStart[1] = { start };
     int aEnd[1] = { end };
 
-    cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, sizeof(int) * N * N); // TODO: Only needs to be sized (end - start)
-    cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, sizeof(int) * N * N); // TODO: Only needs to be sized (end - start)
+    // Setup buffers and write local data to GPU
+    cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, sizeof(int) * N * N);
+    cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, sizeof(int) * N * N);
     cl::Buffer buffer_results(context, CL_MEM_READ_WRITE, sizeof(int) * (end - start));
     cl::Buffer buffer_start(context, CL_MEM_READ_ONLY,  sizeof(int));
     cl::Buffer buffer_end(context, CL_MEM_READ_ONLY,  sizeof(int));
 
     cl::CommandQueue queue(context, default_device);
 
-    queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int) * N * N, a); // TODO: Only write elements in range (start..end)
-    queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, sizeof(int) * N * N, b); // TODO: Only write elements in range (start..end)
+    queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int) * N * N, a);
+    queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, sizeof(int) * N * N, b);
     queue.enqueueWriteBuffer(buffer_start, CL_TRUE, 0, sizeof(int), aStart);
     queue.enqueueWriteBuffer(buffer_end, CL_TRUE, 0, sizeof(int), aEnd);
 
@@ -117,7 +118,7 @@ void partiallyMultiplyMatrices(int start, int end, int a[N*N], int b[N*N]) {
     queue.enqueueNDRangeKernel(matrix_multiply, cl::NullRange, cl::NDRange(10), cl::NullRange);
 
     // Read results from GPU
-    int results[end - start]; // TODO: Only needs to be sized (end - start)
+    int results[end - start];
     queue.enqueueReadBuffer(buffer_results, CL_TRUE, 0, sizeof(int) * (end - start), results);
 
     // Send results back to master process

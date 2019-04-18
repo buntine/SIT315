@@ -1,0 +1,41 @@
+I developed and executed these programs using Manjaro linux and the GNU C++ (g++) compiler
+
+0) OpenMPI:
+
+  COMPILE: mpic++ -std=c++0x matrixMult-openmpi.cpp -o mm-mpi.out
+  EXECUTE: $ mpirun -np 4 mm-mpi.out
+
+1) OpenMPI + OpenMP
+
+  COMPILE: mpic++ -std=c++0x matrixMult-openmpi-openmp.cpp -o mm-mpi-mp.out -fopenmp
+  EXECUTE: $ mpirun -np 4 mm-mpi-mp.out
+
+1) OpenMPI + OpenCL
+
+  COMPILE: $ mpic++ -std=c++0x matrixMult-openmpi.cpp -o mm-mpi-cl.out -lOpenCL
+  EXECUTE: $ mpirun -np 4 mm-mpi-cl.out
+
+Performance table
+
+Program           Input size    MPI Processes    Threads    Time
+OpenMPI           100           4                N/A        1.98
+OpenMPI + OpenMP  100           4                10         10.62
+OpenMPI + OpenCL  100           4                10         173.56
+OpenMPI           500           4                N/A        158.4
+OpenMPI + OpenMP  500           4                10         217.67
+OpenMPI + OpenCL  500           4                10         216.99
+OpenMPI           500           2                N/A        454.65
+OpenMPI + OpenMP  500           2                10         396.67
+OpenMPI + OpenCL  500           2                10         214.08
+OpenMPI           1000          4                N/A        1989.12
+OpenMPI + OpenMP  1000          4                10         1455.10
+OpenMPI + OpenCL  1000          4                10         1128.33
+OpenMPI           1000          2                N/A        5171.13
+OpenMPI + OpenMP  1000          2                10         4634.77
+OpenMPI + OpenMP  1000          2                2          5218.77
+OpenMPI + OpenCL  1000          2                10         3376.66
+OpenMPI           2000          4                N/A        18013.90
+OpenMPI + OpenMP  2000          4                10         15233.60
+OpenMPI + OpenCL  2000          4                10         9573.49
+
+From this experiment I can see that, for small problem sizes, the overhead of moving data in and out of the GPU is not worth it but as N grows large, the parellization we get from OpenCL starts to be very effective. For input matrix of 2000x2000, the OpenCL version is twice as performant as the basic OpenMPI version. I imagine that this saving would only grow better as N grew even larger.
