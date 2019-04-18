@@ -6,7 +6,7 @@
 #include <math.h>
 #include <omp.h>
 
-#define N 12
+#define N 1000
 
 using namespace std;
 
@@ -26,20 +26,18 @@ private:
 };
 
 // Populates the given matrix with random numbers.
-void populateMatrix(long a[][N]) {
-    for (int i=0; i<N; i++) {
-        for (int j=0; j<N; j++) {
-            a[i][j] = rand() % 100;
-        }
+void populateMatrix(long a[N*N]) {
+    for (int i=0; i<N*N; i++) {
+        a[i] = rand() % 100;
     }
 }
 
 // Multiplies row a with column col from b, returning the result.
-long multiplyRowCol(long a[], long b[][N], long col) {
+long multiplyRowCol(long a[N*N], long b[N*N], long row, long col) {
     long result = 0;
 
     for (int i=0; i<N; i++) {
-        result += (a[i] * b[i][col]);
+        result += (a[(row * N) + i] * b[(i * N) + col]);
     }
 
     return result;
@@ -47,7 +45,7 @@ long multiplyRowCol(long a[], long b[][N], long col) {
 
 // Partially multiplies matrices a and b from offsets start to stop. Results are
 // sent to the zeroth process.
-void partiallyMultiplyMatrices(int start, int end, long a[][N], long b[][N]) {
+void partiallyMultiplyMatrices(int start, int end, long a[N*N], long b[N*N]) {
     int row;
     int col;
     int results[end - start];
@@ -57,23 +55,23 @@ void partiallyMultiplyMatrices(int start, int end, long a[][N], long b[][N]) {
         row = floor(i / N);
         col = floor(i % N);
 
-        results[i - start] = multiplyRowCol(a[row], b, col);
+        results[i - start] = multiplyRowCol(a, b, row, col);
     }
 
     MPI_Send(results, end - start, MPI_INT, 0, 0, MPI_COMM_WORLD);
 }
 
 // Writes the given matrix to file.
-void persistToFile(string path, long m[][N]) {
+void persistToFile(string path, long m[N*N]) {
     ofstream outfile;
     outfile.open(path);
 
-    for (int i=0; i<N; i++) {
-        for (int j=0; j<N; j++) {
-            outfile << m[i][j] << " ";
-        }
+    for (int i=0; i<N*N; i++) {
+        outfile << m[i] << " ";
 
-        outfile << endl;
+        if (i % N == N-1) {
+            outfile << endl;
+        }
     }
 
     outfile.close();
@@ -81,10 +79,11 @@ void persistToFile(string path, long m[][N]) {
 
 int main(int argc, char** argv) {
     int rank, size, start, end;
-    long a[N][N], b[N][N], c[N][N];
+    long matrixSize = N * N;
+    long* a = new long[matrixSize];
+    long* b = new long[matrixSize];
+    long* c = new long[matrixSize];
 
-    int matrixSize = N * N;
-      
     populateMatrix(a);
     populateMatrix(b);
 
@@ -119,10 +118,7 @@ int main(int argc, char** argv) {
             start = (rank - 1) * chunkSize;
 
             for (int i=start; i<(start + count); i++) {
-                row = floor(i / N);
-                col = floor(i % N);
-
-                c[row][col] = results[i - start];
+                c[i] = results[i - start];
             }
         }
 
@@ -132,6 +128,10 @@ int main(int argc, char** argv) {
 
         cout << "Elapsed time: " << (t * 1000) << endl;
     }
+
+    delete [] a;
+    delete [] b;
+    delete [] c;
 
     MPI_Finalize();
 

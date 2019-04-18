@@ -7,16 +7,11 @@
 #include <mpi.h>
 #include <CL/cl.hpp>
 
-#define N 100
+#define N 1000
 
 using namespace std;
 
-// COMPILE: mpic++ -std=c++0x matrixMult-openmpi-opencl.cpp -o mm-mpi-cl.out -lOpenCL
-// EXECUTE: mpirun -np 4 mm-mpi-cl.out
-
-// NOTE: I've changed my matrices to be represented as a one-dimensional array in row-major format
-//       in this solution because it seems OpenCL does not allow 2D arrays as arguments.
-//       I consulted several online resources in order to wrap my head around OpenCL, including:
+// NOTE: I consulted several online resources in order to wrap my head around OpenCL, including:
 //         - https://github.com/Dakkers/OpenCL-examples
 //         - https://stackoverflow.com/questions/35442327/2d-array-as-opencl-kernel-argument
 //         - https://en.wikipedia.org/wiki/OpenCL
@@ -147,11 +142,10 @@ void persistToFile(string path, int m[N*N]) {
 
 int main(int argc, char** argv) {
     int rank, size, start, end;
-    int* a = new int[N*N];
-    int* b = new int[N*N];
-    int* c = new int[N*N];
-
     int matrixSize = N * N;
+    int* a = new int[matrixSize];
+    int* b = new int[matrixSize];
+    int* c = new int[matrixSize];
 
     populateMatrix(a);
     populateMatrix(b);
