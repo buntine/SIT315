@@ -1,0 +1,14 @@
+0) OpenMPI:
+
+  COMPILE: mpic++ -std=c++0x matrixMult-openmpi.cpp -o mm-mpi.out
+  EXECUTE: $ mpirun -np 4 mm-mpi.out
+
+1) OpenMPI + OpenMP
+
+  COMPILE: mpic++ -std=c++0x matrixMult-openmpi-openmp.cpp -o mm-mpi-mp.out -fopenmp
+  EXECUTE: $ mpirun -np 4 mm-mpi-mp.out
+
+1) OpenMPI + OpenCL
+
+  COMPILE: $ mpic++ -std=c++0x matrixMult-openmpi.cpp -o mm-mpi-cl.out -lOpenCL
+  EXECUTE: $ mpirun -np 4 mm-mpi-cl.out
